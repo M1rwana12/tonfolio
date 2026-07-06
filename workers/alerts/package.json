@@ -4,10 +4,24 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "dev": "node --env-file=../../.env --import=tsx src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@tonfolio/db": "workspace:*",
+    "@tonfolio/shared": "workspace:*",
+    "@tonfolio/ton": "workspace:*",
+    "bullmq": "^5.56.0",
+    "ioredis": "5.10.1",
+    "zod": "^4.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
   }
 }
