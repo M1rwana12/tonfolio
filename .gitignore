@@ -1,0 +1,24 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+.next/
+coverage/
+*.tsbuildinfo
+
+# environment
+.env
+.env.*
+!.env.example
+
+# generated
+generated/
+
+# tooling
+CLAUDE.md
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
