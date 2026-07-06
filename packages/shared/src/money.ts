@@ -143,6 +143,18 @@ export function valueInFiat(
   return roundDiv(amount * price, pow10(assetDecimals), rounding);
 }
 
+/**
+ * Converts a float into fixed-point units — boundary use only (external APIs
+ * deliver prices as floats). Rounds half-up at the target scale.
+ */
+export function fromNumber(value: number, decimals: number): bigint {
+  assertDecimals(decimals);
+  if (!Number.isFinite(value)) {
+    throw new MoneyError(`expected a finite number, got ${value}`);
+  }
+  return parseUnits(value.toFixed(decimals), decimals);
+}
+
 /** Relative change in basis points (1% = 100 bps); null when the base is zero. */
 export function bpsChange(base: bigint, current: bigint): bigint | null {
   if (base === 0n) {

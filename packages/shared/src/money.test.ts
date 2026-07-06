@@ -4,6 +4,7 @@ import {
   bpsChange,
   formatUnits,
   fromNano,
+  fromNumber,
   parseUnits,
   scaleUnits,
   toNano,
@@ -106,6 +107,25 @@ describe('valueInFiat', () => {
   it('handles 6-decimal assets', () => {
     // 250.75 USDT × $1.0002 = $250.80015
     expect(valueInFiat(250_750_000n, 6, 1_000_200_000n)).toBe(250_800_150_000n);
+  });
+});
+
+describe('fromNumber', () => {
+  it('converts an API float price into fixed-point units', () => {
+    expect(fromNumber(5.42, 9)).toBe(5_420_000_000n);
+  });
+
+  it('handles scientific notation for tiny prices', () => {
+    expect(fromNumber(1.234e-7, 9)).toBe(123n);
+  });
+
+  it('absorbs float artifacts by rounding to the target scale', () => {
+    expect(fromNumber(0.1 + 0.2, 9)).toBe(300_000_000n);
+  });
+
+  it('rejects non-finite values', () => {
+    expect(() => fromNumber(Number.NaN, 9)).toThrow();
+    expect(() => fromNumber(Number.POSITIVE_INFINITY, 9)).toThrow();
   });
 });
 
