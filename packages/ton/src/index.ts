@@ -1,3 +1,4 @@
+export * from './address.js';
 export * from './coingecko.js';
 export * from './http.js';
 export * from './price-cache.js';
