@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Locale {
+  uk
+  en
+}
+
+enum AssetKind {
+  NATIVE
+  JETTON
+}
+
+enum AlertType {
+  PRICE_ABOVE
+  PRICE_BELOW
+  PRICE_CHANGE_PCT
+  WALLET_TX
+  LARGE_TRANSFER
+}
+
+enum AlertStatus {
+  ACTIVE
+  TRIGGERED
+  PAUSED
+}
+
+model User {
+  id              String   @id @default(cuid())
+  telegramId      BigInt   @unique
+  locale          Locale   @default(uk)
+  notifyEnabled   Boolean  @default(true)
+  /// Minutes from local midnight; quiet window may wrap past midnight (start > end).
+  quietHoursStart Int?
+  quietHoursEnd   Int?
+  timezone        String   @default("Europe/Kyiv")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  wallets   Wallet[]
+  alerts    Alert[]
+  snapshots PortfolioSnapshot[]
+}
+
+model Wallet {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Raw form "0:<hex>" — canonical for dedup; friendly form for display.
+  addressRaw      String
+  addressFriendly String
+  label           String?
+  /// True only after server-side ton_proof verification.
+  verified        Boolean  @default(false)
+  isWatchOnly     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  holdings Holding[]
+  txCache  TxCache[]
+
+  @@unique([userId, addressRaw])
+  @@index([addressRaw])
+}
+
+model Asset {
+  id           String    @id @default(cuid())
+  kind         AssetKind
+  symbol       String
+  name         String
+  decimals     Int
+  jettonMaster String?   @unique
+  coingeckoId  String?
+  createdAt    DateTime  @default(now())
+
+  holdings   Holding[]
+  priceTicks PriceTick[]
+}
+
+model Holding {
+  id         String   @id @default(cuid())
+  walletId   String
+  wallet     Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  assetId    String
+  asset      Asset    @relation(fields: [assetId], references: [id])
+  /// Minimal units (nanoton / jetton units).
+  amount     BigInt
+  observedAt DateTime @default(now())
+
+  @@index([walletId, assetId, observedAt(sort: Desc)])
+}
+
+model PortfolioSnapshot {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Fixed-point, 9 decimals (FIAT_DECIMALS in @tonfolio/shared).
+  totalUsd BigInt
+  totalUah BigInt
+  takenAt  DateTime @default(now())
+
+  @@index([userId, takenAt(sort: Desc)])
+}
+
+model PriceTick {
+  id       String   @id @default(cuid())
+  assetId  String
+  asset    Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  /// Fixed-point, 9 decimals (FIAT_DECIMALS in @tonfolio/shared).
+  priceUsd BigInt
+  priceUah BigInt
+  source   String   @default("coingecko")
+  takenAt  DateTime @default(now())
+
+  @@index([assetId, takenAt(sort: Desc)])
+}
+
+model Alert {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        AlertType
+  /// Shape depends on `type`; validated with alertParamsSchema from @tonfolio/shared.
+  params      Json
+  status      AlertStatus @default(ACTIVE)
+  cooldownSec Int         @default(3600)
+  pausedUntil DateTime?
+  lastFiredAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  events AlertEvent[]
+
+  @@index([status, type])
+  @@index([userId])
+}
+
+model AlertEvent {
+  id      String   @id @default(cuid())
+  alertId String
+  alert   Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  message String
+  payload Json?
+  firedAt DateTime @default(now())
+
+  @@index([alertId, firedAt(sort: Desc)])
+}
+
+model TxCache {
+  id       String   @id @default(cuid())
+  walletId String
+  wallet   Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  txHash   String
+  /// Logical time of the transaction — cursor for incremental polling.
+  lt       BigInt
+  seenAt   DateTime @default(now())
+
+  @@unique([walletId, txHash])
+  @@index([walletId, lt(sort: Desc)])
+}
