@@ -15,9 +15,6 @@ coverage/
 # generated
 generated/
 
-# tooling
-CLAUDE.md
-.claude/
 
 # OS
 .DS_Store
