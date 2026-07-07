@@ -41,7 +41,7 @@ const ASSETS: AssetSeed[] = [
     decimals: 9,
     jettonMaster: null,
     coingeckoId: 'the-open-network',
-    basePriceUsd: 5.42,
+    basePriceUsd: 1.69,
     hourlyVolatility: 0.008,
   },
   {
@@ -61,7 +61,7 @@ const ASSETS: AssetSeed[] = [
     decimals: 9,
     jettonMaster: '0:2f956143c461769579baef2e32cc2d7bc18283f40d20bb03e432cd603ac33ffc',
     coingeckoId: 'notcoin',
-    basePriceUsd: 0.00185,
+    basePriceUsd: 0.00095,
     hourlyVolatility: 0.015,
   },
   {
@@ -71,7 +71,7 @@ const ASSETS: AssetSeed[] = [
     decimals: 9,
     jettonMaster: '0:afc49cb8786f21c87045b19ede78fc6b46c51048513f8e9a6d44060199c1bf0c',
     coingeckoId: 'dogs-2',
-    basePriceUsd: 0.00052,
+    basePriceUsd: 0.00013,
     hourlyVolatility: 0.02,
   },
   {
@@ -81,7 +81,7 @@ const ASSETS: AssetSeed[] = [
     decimals: 9,
     jettonMaster: '0:3690254dc15b2297610cda60744a45f2b710aa4234b89adb630e99d79b01bd4f',
     coingeckoId: 'ston',
-    basePriceUsd: 0.55,
+    basePriceUsd: 0.31,
     hourlyVolatility: 0.012,
   },
   {
@@ -183,17 +183,20 @@ async function main(): Promise<void> {
     if (!asset) continue;
     const random = mulberry32(seed.symbol.charCodeAt(0) * 7919 + seed.decimals);
     let price = seed.basePriceUsd;
-    const ticks = [];
+    const walk: number[] = [];
     for (let hour = 0; hour <= HISTORY_HOURS; hour += 1) {
       price *= 1 + (random() - 0.5) * 2 * seed.hourlyVolatility;
-      ticks.push({
-        assetId: asset.id,
-        priceUsd: toFiat(price),
-        priceUah: toFiat(price * UAH_PER_USD),
-        source: 'seed',
-        takenAt: new Date(historyStart + hour * HOUR_MS),
-      });
+      walk.push(price);
     }
+    // pin the walk's endpoint to basePrice so seeded history meets live quotes
+    const factor = seed.basePriceUsd / (walk.at(-1) ?? seed.basePriceUsd);
+    const ticks = walk.map((value, hour) => ({
+      assetId: asset.id,
+      priceUsd: toFiat(value * factor),
+      priceUah: toFiat(value * factor * UAH_PER_USD),
+      source: 'seed',
+      takenAt: new Date(historyStart + hour * HOUR_MS),
+    }));
     await prisma.priceTick.createMany({ data: ticks });
     tickCount += ticks.length;
   }
