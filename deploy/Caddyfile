@@ -1,0 +1,11 @@
+{$APP_DOMAIN} {
+	encode gzip
+
+	handle /api/bot* {
+		reverse_proxy bot:8080
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

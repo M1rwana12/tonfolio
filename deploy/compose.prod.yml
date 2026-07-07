@@ -1,0 +1,99 @@
+# Production composition for a 1 GB GCP e2-micro.
+# Memory caps sum to ~800 MB; the rest is left to the OS (plus 1 GB swap).
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    mem_limit: 190m
+    environment:
+      POSTGRES_USER: tonfolio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: tonfolio
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tonfolio -d tonfolio']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    mem_limit: 80m
+    command:
+      [
+        'redis-server',
+        '--maxmemory',
+        '64mb',
+        '--maxmemory-policy',
+        'allkeys-lru',
+        '--appendonly',
+        'yes',
+      ]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  bot:
+    image: ghcr.io/m1rwana12/tonfolio:latest
+    restart: always
+    mem_limit: 150m
+    command: ['node', 'apps/bot/dist/index.js']
+    env_file: .env
+    environment:
+      BOT_MODE: webhook
+      PORT: '8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    image: ghcr.io/m1rwana12/tonfolio:latest
+    restart: always
+    mem_limit: 130m
+    command: ['node', 'workers/alerts/dist/index.js']
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    image: ghcr.io/m1rwana12/tonfolio:latest
+    restart: always
+    mem_limit: 230m
+    working_dir: /app/apps/web
+    command: ['./node_modules/.bin/next', 'start', '-p', '3000']
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    mem_limit: 50m
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - bot
+      - web
+
+volumes:
+  pgdata:
+  redisdata:
+  caddydata:
+  caddyconfig:
