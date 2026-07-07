@@ -18,6 +18,7 @@
     "@tonfolio/shared": "workspace:*",
     "@tonfolio/ton": "workspace:*",
     "grammy": "^1.38.0",
+    "pino": "^9.7.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {

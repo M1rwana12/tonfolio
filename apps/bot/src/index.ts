@@ -4,6 +4,7 @@ import { CoinGeckoClient, TonApiClient } from '@tonfolio/ton';
 import { createBot } from './bot.js';
 import type { BotDeps } from './context.js';
 import { loadEnv } from './env.js';
+import { logger } from './logger.js';
 import { PriceService } from '@tonfolio/core';
 
 async function main(): Promise<void> {
@@ -37,11 +38,11 @@ async function main(): Promise<void> {
 
   await bot.start({
     drop_pending_updates: true,
-    onStart: (me) => console.log(`[bot] @${me.username} is polling`),
+    onStart: (me) => logger.info(`@${me.username} is polling`),
   });
 }
 
 main().catch((error: unknown) => {
-  console.error(error);
+  logger.error({ err: error }, 'fatal');
   process.exit(1);
 });

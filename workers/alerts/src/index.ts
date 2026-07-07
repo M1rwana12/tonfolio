@@ -10,6 +10,7 @@ import { redisAlertLock } from './engine/locks.js';
 import { telegramAlertSender } from './engine/notify.js';
 import { runPriceAlertChecks, runTxAlertChecks } from './engine/run-checks.js';
 import { loadEnv } from './env.js';
+import { logger } from './logger.js';
 import { pollPrices } from './jobs/poll-prices.js';
 import { snapshotPortfolios } from './jobs/snapshot-portfolios.js';
 
@@ -84,10 +85,10 @@ async function main(): Promise<void> {
   );
 
   worker.on('completed', (job, result) => {
-    console.log(`[worker] ${job.name}: done (${JSON.stringify(result)})`);
+    logger.info({ job: job.name, result }, 'job done');
   });
   worker.on('failed', (job, error) => {
-    console.error(`[worker] ${job?.name ?? 'unknown'}: failed — ${error.message}`);
+    logger.error({ job: job?.name, err: error }, 'job failed');
   });
 
   const shutdown = async (): Promise<void> => {
@@ -100,13 +101,16 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => void shutdown());
   process.on('SIGTERM', () => void shutdown());
 
-  console.log(
-    `[worker] started: poll-prices+alerts every ${PRICE_POLL_INTERVAL_MS / 1000}s, ` +
-      `tx-alerts every ${TX_CHECK_INTERVAL_MS / 1000}s, snapshots hourly`,
+  logger.info(
+    {
+      pricePollSec: PRICE_POLL_INTERVAL_MS / 1000,
+      txCheckSec: TX_CHECK_INTERVAL_MS / 1000,
+    },
+    'worker started',
   );
 }
 
 main().catch((error: unknown) => {
-  console.error(error);
+  logger.error({ err: error }, 'fatal');
   process.exit(1);
 });
