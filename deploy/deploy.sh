@@ -18,8 +18,8 @@ run 'sudo mkdir -p /opt/tonfolio && sudo chown $USER /opt/tonfolio'
 
 echo "— copying compose, Caddyfile, backup script and .env"
 scp -i "$KEY" "$DIR/compose.prod.yml" "$HOST:/opt/tonfolio/compose.yml"
-scp -i "$KEY" "$DIR/Caddyfile" "$DIR/backup.sh" "$ENV_FILE" "$HOST:/opt/tonfolio/"
-run 'mv /opt/tonfolio/$(basename '"$ENV_FILE"') /opt/tonfolio/.env 2>/dev/null || true'
+scp -i "$KEY" "$DIR/Caddyfile" "$DIR/backup.sh" "$HOST:/opt/tonfolio/"
+scp -i "$KEY" "$ENV_FILE" "$HOST:/opt/tonfolio/.env"
 run 'chmod 600 /opt/tonfolio/.env && chmod +x /opt/tonfolio/backup.sh'
 
 echo "— ghcr login (token from gh cli)"
@@ -31,7 +31,7 @@ run 'cd /opt/tonfolio && sudo docker compose pull --quiet'
 
 echo "— pushing schema and seeding"
 run 'cd /opt/tonfolio && sudo docker compose run --rm --workdir /app/packages/db bot ./node_modules/.bin/prisma db push'
-run 'cd /opt/tonfolio && sudo docker compose run --rm --workdir /app/packages/db bot ./node_modules/.bin/prisma db seed'
+run 'cd /opt/tonfolio && sudo docker compose run --rm --workdir /app/packages/db bot ./node_modules/.bin/tsx prisma/seed.ts'
 
 echo "— starting services"
 run 'cd /opt/tonfolio && sudo docker compose up -d'
