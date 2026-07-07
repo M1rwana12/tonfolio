@@ -1,9 +1,14 @@
+import { PriceService } from '@tonfolio/core';
 import { getPrisma } from '@tonfolio/db';
-import { CoinGeckoClient, PriceCache } from '@tonfolio/ton';
+import { CoinGeckoClient, TonApiClient } from '@tonfolio/ton';
 import type { KeyValueStore } from '@tonfolio/ton';
+import { PriceCache } from '@tonfolio/ton';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 
+import { redisAlertLock } from './engine/locks.js';
+import { telegramAlertSender } from './engine/notify.js';
+import { runPriceAlertChecks, runTxAlertChecks } from './engine/run-checks.js';
 import { loadEnv } from './env.js';
 import { pollPrices } from './jobs/poll-prices.js';
 import { snapshotPortfolios } from './jobs/snapshot-portfolios.js';
@@ -11,11 +16,16 @@ import { snapshotPortfolios } from './jobs/snapshot-portfolios.js';
 const QUEUE_NAME = 'tonfolio-jobs';
 const PRICE_POLL_INTERVAL_MS = 60_000;
 const SNAPSHOT_INTERVAL_MS = 3_600_000;
+const TX_CHECK_INTERVAL_MS = 120_000;
 
 async function main(): Promise<void> {
   const env = loadEnv();
   const connection = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
   const prisma = getPrisma();
+  const tonapi = new TonApiClient(env.TONAPI_KEY ? { apiKey: env.TONAPI_KEY } : {});
+  const coingecko = new CoinGeckoClient(
+    env.COINGECKO_API_KEY ? { apiKey: env.COINGECKO_API_KEY } : {},
+  );
 
   const redisStore: KeyValueStore = {
     get: (key) => connection.get(key),
@@ -23,11 +33,16 @@ async function main(): Promise<void> {
       await connection.set(key, value, 'EX', ttlSec);
     },
   };
-
-  const coingecko = new CoinGeckoClient(
-    env.COINGECKO_API_KEY ? { apiKey: env.COINGECKO_API_KEY } : {},
-  );
   const cache = new PriceCache(redisStore);
+  const prices = new PriceService(prisma, coingecko);
+
+  const engineDeps = {
+    prisma,
+    prices,
+    tonapi,
+    lock: redisAlertLock(connection),
+    sender: telegramAlertSender(env.BOT_TOKEN),
+  };
 
   const queue = new Queue(QUEUE_NAME, { connection });
   await queue.upsertJobScheduler(
@@ -40,15 +55,27 @@ async function main(): Promise<void> {
     { every: SNAPSHOT_INTERVAL_MS },
     { name: 'snapshot-portfolios' },
   );
+  await queue.upsertJobScheduler(
+    'check-tx-alerts',
+    { every: TX_CHECK_INTERVAL_MS },
+    { name: 'check-tx-alerts' },
+  );
 
   const worker = new Worker(
     QUEUE_NAME,
     async (job) => {
       switch (job.name) {
-        case 'poll-prices':
-          return pollPrices({ prisma, coingecko, cache });
+        case 'poll-prices': {
+          // price alerts are evaluated on every tick, right after the poll;
+          // the check compares the pre-poll tick (baseline) with the live price
+          const fired = await runPriceAlertChecks(engineDeps);
+          const written = await pollPrices({ prisma, coingecko, cache });
+          return { written, fired };
+        }
         case 'snapshot-portfolios':
           return snapshotPortfolios({ prisma });
+        case 'check-tx-alerts':
+          return runTxAlertChecks(engineDeps);
         default:
           throw new Error(`unknown job: ${job.name}`);
       }
@@ -74,8 +101,8 @@ async function main(): Promise<void> {
   process.on('SIGTERM', () => void shutdown());
 
   console.log(
-    `[worker] started: poll-prices every ${PRICE_POLL_INTERVAL_MS / 1000}s, ` +
-      `snapshot-portfolios every ${SNAPSHOT_INTERVAL_MS / 60000}min`,
+    `[worker] started: poll-prices+alerts every ${PRICE_POLL_INTERVAL_MS / 1000}s, ` +
+      `tx-alerts every ${TX_CHECK_INTERVAL_MS / 1000}s, snapshots hourly`,
   );
 }
 
