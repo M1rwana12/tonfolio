@@ -15,8 +15,9 @@ export async function sendPortfolio(ctx: BotContext, deps: BotDeps): Promise<voi
     await ctx.reply(t(locale, 'portfolioEmpty'));
     return;
   }
+  // web_app button opens the Mini App inside Telegram (requires https)
   const keyboard = deps.env.WEB_APP_URL?.startsWith('https://')
-    ? new InlineKeyboard().url(t(locale, 'openMiniApp'), deps.env.WEB_APP_URL)
+    ? new InlineKeyboard().webApp(t(locale, 'openMiniApp'), deps.env.WEB_APP_URL)
     : undefined;
   await ctx.reply(renderPortfolio(locale, summary), {
     parse_mode: 'HTML',

@@ -41,6 +41,16 @@ async function main(): Promise<void> {
     { language_code: 'en' },
   );
 
+  if (env.WEB_APP_URL?.startsWith('https://')) {
+    await bot.api.setChatMenuButton({
+      menu_button: {
+        type: 'web_app',
+        text: 'Портфель',
+        web_app: { url: env.WEB_APP_URL },
+      },
+    });
+  }
+
   if (env.BOT_MODE === 'webhook') {
     if (!env.APP_URL || !env.WEBHOOK_SECRET) {
       throw new Error('webhook mode requires APP_URL and WEBHOOK_SECRET');
