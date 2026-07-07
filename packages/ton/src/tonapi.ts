@@ -23,6 +23,8 @@ const jettonBalancesSchema = z.object({
   ),
 });
 
+const publicKeySchema = z.object({ public_key: z.string() });
+
 const transactionsSchema = z.object({
   transactions: z.array(
     z.object({
@@ -119,9 +121,15 @@ export class TonApiClient {
     }
   }
 
+  /** Hex-encoded ed25519 public key of a deployed wallet (used by ton_proof). */
+  async getAccountPublicKey(address: string): Promise<string> {
+    const data = await this.http.get(`/v2/accounts/${address}/publickey`, publicKeySchema);
+    return data.public_key;
+  }
+
   async getTransactions(
     address: string,
-    options: { limit?: number; afterLt?: bigint } = {},
+    options: { limit?: number; afterLt?: bigint; beforeLt?: bigint } = {},
   ): Promise<TonTransaction[]> {
     const query: Record<string, string> = {
       limit: String(options.limit ?? 50),
@@ -129,6 +137,9 @@ export class TonApiClient {
     };
     if (options.afterLt !== undefined) {
       query.after_lt = options.afterLt.toString();
+    }
+    if (options.beforeLt !== undefined) {
+      query.before_lt = options.beforeLt.toString();
     }
     const data = await this.http.get(
       `/v2/blockchain/accounts/${address}/transactions`,

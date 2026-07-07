@@ -88,6 +88,24 @@ describe('TonApiClient', () => {
     await expect(client.getJettonBalances(ADDRESS)).resolves.toEqual([]);
   });
 
+  it('fetches the account public key for ton_proof', async () => {
+    const { fetchFn, requests } = fakeFetch([{ status: 200, body: '{"public_key":"aabbcc"}' }]);
+    const client = new TonApiClient({ fetchFn, retries: 0 });
+
+    await expect(client.getAccountPublicKey(ADDRESS)).resolves.toBe('aabbcc');
+    expect(requests[0]?.url).toBe(`https://tonapi.io/v2/accounts/${ADDRESS}/publickey`);
+  });
+
+  it('paginates transactions older than a logical-time cursor', async () => {
+    const { fetchFn, requests } = fakeFetch([{ status: 200, body: '{"transactions":[]}' }]);
+    const client = new TonApiClient({ fetchFn, retries: 0 });
+
+    await client.getTransactions(ADDRESS, { beforeLt: 123n, limit: 10 });
+
+    const url = new URL(requests[0]?.url ?? '');
+    expect(url.searchParams.get('before_lt')).toBe('123');
+  });
+
   it('fetches transactions after a logical-time cursor', async () => {
     const { fetchFn, requests } = fakeFetch([
       {
