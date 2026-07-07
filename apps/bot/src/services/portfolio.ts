@@ -1,4 +1,5 @@
 import type { Asset } from '@tonfolio/db';
+import { decimalToBigint } from '@tonfolio/db';
 import { bpsChange, valueInFiat } from '@tonfolio/shared';
 
 import type { BotDeps } from '../context.js';
@@ -24,11 +25,12 @@ export async function getPortfolioSummary(
 
   const byAsset = new Map<string, { asset: Asset; amount: bigint }>();
   for (const holding of holdings) {
+    const amount = decimalToBigint(holding.amount);
     const entry = byAsset.get(holding.assetId);
     if (entry) {
-      entry.amount += holding.amount;
+      entry.amount += amount;
     } else {
-      byAsset.set(holding.assetId, { asset: holding.asset, amount: holding.amount });
+      byAsset.set(holding.assetId, { asset: holding.asset, amount });
     }
   }
 

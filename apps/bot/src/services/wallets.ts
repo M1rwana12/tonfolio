@@ -23,6 +23,7 @@ export async function syncWalletHoldings(
 
   for (const jetton of jettons) {
     if (jetton.amount <= 0n) continue;
+    if (jetton.verification === 'blacklist') continue;
     const master = parseTonAddress(jetton.master)?.raw ?? jetton.master;
     let asset = await prisma.asset.findUnique({ where: { jettonMaster: master } });
     asset ??= await prisma.asset.create({
@@ -38,7 +39,9 @@ export async function syncWalletHoldings(
   }
 
   if (rows.length > 0) {
-    await prisma.holding.createMany({ data: rows });
+    await prisma.holding.createMany({
+      data: rows.map((row) => ({ ...row, amount: row.amount.toString() })),
+    });
   }
   return rows.length;
 }

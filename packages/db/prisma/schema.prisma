@@ -88,8 +88,9 @@ model Holding {
   wallet     Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
   assetId    String
   asset      Asset    @relation(fields: [assetId], references: [id])
-  /// Minimal units (nanoton / jetton units).
-  amount     BigInt
+  /// Minimal units (nanoton / jetton units); NUMERIC(38,0) — meme-jetton whale
+  /// balances overflow int8 (seen live: 1e22 units).
+  amount     Decimal  @db.Decimal(38, 0)
   observedAt DateTime @default(now())
 
   @@index([walletId, assetId, observedAt(sort: Desc)])
@@ -99,9 +100,10 @@ model PortfolioSnapshot {
   id       String   @id @default(cuid())
   userId   String
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// Fixed-point, 9 decimals (FIAT_DECIMALS in @tonfolio/shared).
-  totalUsd BigInt
-  totalUah BigInt
+  /// Fixed-point, 9 decimals (FIAT_DECIMALS in @tonfolio/shared); NUMERIC to
+  /// survive whale portfolios beyond $9.2e9.
+  totalUsd Decimal @db.Decimal(38, 0)
+  totalUah Decimal @db.Decimal(38, 0)
   takenAt  DateTime @default(now())
 
   @@index([userId, takenAt(sort: Desc)])

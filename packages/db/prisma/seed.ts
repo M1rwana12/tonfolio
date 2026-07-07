@@ -170,7 +170,7 @@ async function main(): Promise<void> {
     const asset = assets.get(holding.symbol);
     if (!asset) throw new Error(`unknown asset in seed: ${holding.symbol}`);
     await prisma.holding.create({
-      data: { walletId: holding.walletId, assetId: asset.id, amount: holding.amount },
+      data: { walletId: holding.walletId, assetId: asset.id, amount: holding.amount.toString() },
     });
   }
 
@@ -205,8 +205,8 @@ async function main(): Promise<void> {
     totalUsd *= 1 + (snapshotRandom() - 0.5) * 0.02;
     snapshots.push({
       userId: user.id,
-      totalUsd: toFiat(totalUsd),
-      totalUah: toFiat(totalUsd * UAH_PER_USD),
+      totalUsd: toFiat(totalUsd).toString(),
+      totalUah: toFiat(totalUsd * UAH_PER_USD).toString(),
       takenAt: new Date(historyStart + hour * HOUR_MS),
     });
   }

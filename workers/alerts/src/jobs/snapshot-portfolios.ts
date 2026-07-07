@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@tonfolio/db';
+import { decimalToBigint } from '@tonfolio/db';
 
 import { computePortfolioTotals } from '../portfolio.js';
 
@@ -28,13 +29,19 @@ export async function snapshotPortfolios({ prisma }: { prisma: PrismaClient }): 
 
     const totals = computePortfolioTotals(
       holdings.map((holding) => ({
-        amount: holding.amount,
+        amount: decimalToBigint(holding.amount),
         decimals: holding.asset.decimals,
         price: priceByAsset.get(holding.assetId) ?? null,
       })),
     );
 
-    await prisma.portfolioSnapshot.create({ data: { userId: user.id, ...totals } });
+    await prisma.portfolioSnapshot.create({
+      data: {
+        userId: user.id,
+        totalUsd: totals.totalUsd.toString(),
+        totalUah: totals.totalUah.toString(),
+      },
+    });
     snapshots += 1;
   }
   return snapshots;
