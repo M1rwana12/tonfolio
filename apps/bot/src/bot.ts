@@ -9,12 +9,16 @@ import { addWalletConversation, createAlertConversation } from './conversations.
 import { buildAlertsView, sendAlerts, sendLanguageChooser, sendPortfolio } from './handlers.js';
 import { t } from './i18n.js';
 import { createMainMenu } from './menu.js';
+import { logger } from './logger.js';
 import { deleteAlert, setAlertStatus } from './services/alerts.js';
+import { throttle } from './throttle.js';
 
 export interface CreateBotOptions {
   botInfo?: UserFromGetMe;
   /** Test hook: replaces the Bot API transport (inherited by conversation contexts). */
   clientFetch?: ApiClientOptions['fetch'];
+  /** Updates per user per minute (raised by the smoke harness). */
+  throttleLimit?: number;
 }
 
 export function createBot(deps: BotDeps, options: CreateBotOptions = {}): Bot<BotContext> {
@@ -25,8 +29,10 @@ export function createBot(deps: BotDeps, options: CreateBotOptions = {}): Bot<Bo
   const { prisma } = deps;
 
   bot.catch((error) => {
-    console.error('[bot] update failed:', error.error);
+    logger.error({ err: error.error }, 'update failed');
   });
+
+  bot.use(throttle(options.throttleLimit));
 
   // upsert the DB user for every private update
   bot.use(async (ctx, next) => {

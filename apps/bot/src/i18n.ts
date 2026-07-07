@@ -95,6 +95,9 @@ const en: Record<MessageKey, string> = {
 
 export type MessageKey = keyof typeof uk;
 
+/** Shown before the user (and their locale) is known — deliberately bilingual. */
+export const THROTTLE_WARNING = '⏳ Занадто швидко, зачекайте хвилину. / Too fast, wait a minute.';
+
 const messages: Record<Locale, Record<MessageKey, string>> = { uk, en };
 
 export function t(

@@ -150,6 +150,7 @@ async function main(): Promise<void> {
   const bot = createBot(deps, {
     botInfo,
     clientFetch: mockTelegramFetch as unknown as CreateBotOptions['clientFetch'],
+    throttleLimit: 1_000,
   });
 
   console.log('\n— /start (новый пользователь)');
