@@ -6,7 +6,7 @@ import type { BotContext, BotDeps } from './context.js';
 import { escapeHtml, renderPortfolio } from './format.js';
 import { t } from './i18n.js';
 import { listAlertViews } from './services/alerts.js';
-import { getPortfolioSummary } from './services/portfolio.js';
+import { getPortfolioSummary } from '@tonfolio/core';
 
 export async function sendPortfolio(ctx: BotContext, deps: BotDeps): Promise<void> {
   const locale = ctx.user.locale;

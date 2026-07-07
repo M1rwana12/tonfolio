@@ -14,7 +14,7 @@ import { InlineKeyboard } from 'grammy';
 import type { BotContext, BotDeps } from './context.js';
 import { t } from './i18n.js';
 import { createPriceAlert } from './services/alerts.js';
-import { addWatchWallet } from './services/wallets.js';
+import { addWatchWallet } from '@tonfolio/core';
 
 type Convo = Conversation<BotContext, Context>;
 

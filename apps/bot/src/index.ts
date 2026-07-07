@@ -4,7 +4,7 @@ import { CoinGeckoClient, TonApiClient } from '@tonfolio/ton';
 import { createBot } from './bot.js';
 import type { BotDeps } from './context.js';
 import { loadEnv } from './env.js';
-import { PriceService } from './services/prices.js';
+import { PriceService } from '@tonfolio/core';
 
 async function main(): Promise<void> {
   const env = loadEnv();

@@ -12,7 +12,7 @@ import { createBot } from '../src/bot.js';
 import type { CreateBotOptions } from '../src/bot.js';
 import type { BotDeps } from '../src/context.js';
 import { loadEnv } from '../src/env.js';
-import { PriceService } from '../src/services/prices.js';
+import { PriceService } from '@tonfolio/core';
 
 const TEST_TG_ID = 999_000_111;
 const FOUNDATION = 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N';

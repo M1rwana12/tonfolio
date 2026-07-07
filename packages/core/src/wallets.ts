@@ -81,3 +81,32 @@ export async function addWatchWallet(
   }
   return { ok: true, wallet, assets };
 }
+
+/**
+ * Links a TON Connect wallet after successful ton_proof verification.
+ * Re-links an existing watch-only wallet instead of duplicating it.
+ */
+export async function linkVerifiedWallet(
+  prisma: PrismaClient,
+  tonapi: TonApiClient,
+  userId: string,
+  address: ParsedTonAddress,
+): Promise<Wallet> {
+  const wallet = await prisma.wallet.upsert({
+    where: { userId_addressRaw: { userId, addressRaw: address.raw } },
+    update: { verified: true, isWatchOnly: false },
+    create: {
+      userId,
+      addressRaw: address.raw,
+      addressFriendly: address.friendly,
+      verified: true,
+      isWatchOnly: false,
+    },
+  });
+  try {
+    await syncWalletHoldings(prisma, tonapi, wallet);
+  } catch (error) {
+    console.warn(`[wallets] holdings sync failed for ${wallet.addressFriendly}:`, error);
+  }
+  return wallet;
+}

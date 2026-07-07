@@ -4,7 +4,7 @@ import type { TonApiClient } from '@tonfolio/ton';
 import type { Context } from 'grammy';
 
 import type { Env } from './env.js';
-import type { PriceService } from './services/prices.js';
+import type { PriceService } from '@tonfolio/core';
 
 export type BaseContext = Context & {
   /** Upserted DB user for the incoming update. */
